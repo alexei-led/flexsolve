@@ -35,3 +35,4 @@ var/
 config.py
 *.log
 temp/ 
+.cache/

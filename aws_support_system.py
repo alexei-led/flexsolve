@@ -1,11 +1,9 @@
 import autogen
 from termcolor import colored
 import sys
-from prompt_toolkit import PromptSession
+from utils.input_handler import create_prompt_session, get_user_input
 from prompt_toolkit.shortcuts import message_dialog
 from prompt_toolkit.formatted_text import HTML
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.validation import Validator, ValidationError
 
 # Configuration for the agents
 config_list = [
@@ -24,56 +22,6 @@ VPC_SPECIALIST_NAME = "VPC_Specialist"
 IAM_SPECIALIST_NAME = "IAM_Specialist"
 CLOUDWATCH_SPECIALIST_NAME = "CloudWatch_Specialist"
 HUMAN_EXPERT_NAME = "AWS_Architect"
-
-# Create key bindings
-kb = KeyBindings()
-
-@kb.add('c-q')
-def _(event):
-    """Exit when Control-Q is pressed."""
-    event.app.exit()
-
-@kb.add('c-d')
-def _(event):
-    """Submit input when Control-D is pressed."""
-    event.app.exit(result=event.app.current_buffer.text)
-
-class NotEmptyValidator(Validator):
-    def validate(self, document):
-        text = document.text.strip()
-        if not text:
-            raise ValidationError(message='Input cannot be empty')
-
-def create_prompt_session():
-    """Create a prompt session with consistent styling."""
-    return PromptSession(
-        key_bindings=kb,
-        validate=NotEmptyValidator(),
-        validate_while_typing=False,
-        multiline=True,
-        enable_history=True,
-        wrap_lines=True,
-        bottom_toolbar=HTML(
-            '<b>Controls:</b> '
-            '<style fg="green">Enter</style> for new line | '
-            '<style fg="green">Ctrl+D</style> to submit | '
-            '<style fg="green">Ctrl+Q</style> to quit'
-        )
-    )
-
-def get_multiline_input(prompt_text="", session=None):
-    """Get multi-line input from the user with proper formatting."""
-    if session is None:
-        session = create_prompt_session()
-    
-    try:
-        user_input = session.prompt(
-            HTML(f'\n<style fg="green">{prompt_text}</style>\n'),
-            default='',
-        )
-        return user_input.strip()
-    except (EOFError, KeyboardInterrupt):
-        return "exit"
 
 def create_agent_config(name, system_message, human_input_mode="NEVER"):
     return {
@@ -520,7 +468,7 @@ def main():
     session = create_prompt_session()
     
     while True:
-        user_query = get_multiline_input(
+        user_query = get_user_input(
             "Enter your AWS-related question:",
             session=session
         )
