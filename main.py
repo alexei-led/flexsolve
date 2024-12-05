@@ -8,9 +8,9 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.validation import Validator, ValidationError
 
 from config import (
-    OPENAI_CONFIG, USER_PROXY_NAME, COORDINATOR_NAME,
-    MAX_CONSECUTIVE_AUTO_REPLY, CODE_EXECUTION_CONFIG
+    OPENAI_CONFIG, USER_PROXY_NAME, COORDINATOR_NAME
 )
+
 from specialists import (
     EKSSpecialist,
     CloudWatchSpecialist,
@@ -27,8 +27,7 @@ def create_agents():
     user_proxy = autogen.UserProxyAgent(
         name=USER_PROXY_NAME,
         human_input_mode="ALWAYS",
-        max_consecutive_auto_reply=MAX_CONSECUTIVE_AUTO_REPLY,
-        code_execution_config=CODE_EXECUTION_CONFIG,
+        code_execution_config=False,
     )
 
     # Create the coordinator
@@ -42,11 +41,10 @@ def create_agents():
         5. Provide final, actionable solutions
 
         Guidelines for user interaction:
-        - Present one consolidated set of questions at a time
-        - Format questions clearly and numbered
-        - Explain why you need specific information
-        - Wait for user responses before proceeding
-        - Summarize specialist insights in user-friendly terms
+        - If the user greets you with a kind message, greet them back and ask how you can help
+        - When the user asks a technical question, inform them you need to think and start a group chat with specialists
+        - Format a final answer from the specialists' replies and present it to the user
+        - Reply "TERMINATE" when you are done
 
         Guidelines for specialist management:
         - Create focused problem statements for specialists
@@ -61,8 +59,8 @@ def create_agents():
     human_expert = autogen.UserProxyAgent(
         name="AWS_Architect",
         human_input_mode="ALWAYS",
-        max_consecutive_auto_reply=MAX_CONSECUTIVE_AUTO_REPLY,
-        code_execution_config=CODE_EXECUTION_CONFIG,
+        code_execution_config=False,
+        description="This agent can approve or refine clarifying questions and validate the proposed solutions returned by the specialists.",
         system_message="""You are a senior AWS Solutions Architect providing expert guidance. 
         Wait for actual human input when asked for validation or expert opinion.
         Key responsibilities:
@@ -75,11 +73,11 @@ def create_agents():
 
     # Create specialists
     specialists = [
-        EKSSpecialist(OPENAI_CONFIG).create_specialist(),
+        IAMSpecialist(OPENAI_CONFIG).create_specialist(),
         CloudWatchSpecialist(OPENAI_CONFIG).create_specialist(),
         EC2Specialist(OPENAI_CONFIG).create_specialist(),
+        EKSSpecialist(OPENAI_CONFIG).create_specialist(),
         VPCSpecialist(OPENAI_CONFIG).create_specialist(),
-        IAMSpecialist(OPENAI_CONFIG).create_specialist()
     ]
 
     return user_proxy, coordinator, specialists, human_expert
@@ -89,28 +87,74 @@ def main():
     # Create agents
     user_proxy, coordinator, specialists, human_expert = create_agents()
     
-    # Create chat manager
-    chat_manager = ChatManager(coordinator, specialists, human_expert)
-    
-    # Create prompt session
-    session = create_prompt_session()
-    
-    while True:
-        chat_manager.print_header()  # Print header before each input
-        user_query = get_user_input(
-            "Enter your AWS-related question:",
-            session=session
+    # Create group chat with specialists and human expert
+    specialist_group = autogen.GroupChat(
+        agents=[coordinator, human_expert] + specialists,
+        messages=[],
+    )
+    specialists_group_manager = autogen.GroupChatManager(
+        groupchat=specialist_group,
+        llm_config={"config_list": OPENAI_CONFIG},
+    )
+
+    surveyer = autogen.AssistantAgent(
+        name="surveyer",
+        llm_config={"config_list": OPENAI_CONFIG},
+        system_message="""
+            You are a surveyer.
+            Your ask a single question.
+            You job is to get a number between 1 and 10 from the user about support experience before ending the conversation.
+
+            Reply "TERMINATE" when you have no more questions.
+        """,
+    )
+
+    # Function to determine if a question is technical using LLM
+    def is_technical_question_llm(agent):
+        # Use an LLM to classify the question
+        classifier = autogen.AssistantAgent(
+            name="question_classifier",
+            llm_config={"config_list": OPENAI_CONFIG},
+            system_message="""
+                You are a classifier. Determine if the following question is technical in nature.
+                Reply with "YES" if it is technical, otherwise reply with "NO".
+            """,
+        )
+        response = coordinator.initiate_chat(
+            recipient=classifier,
+            message=agent.last_message(),
+            max_turns=1,
         )
         
-        if user_query.lower() == 'exit':
-            message_dialog(
-                title='Exiting',
-                text='Thank you for using DoiT FlexSolve!'
-            ).run()
-            break
+        # return True if the response is "YES", False otherwise
+        return response.summary.strip().upper() == "YES"
+
+    coordinator.register_nested_chats(
+        [
+            {
+                "recipient": specialists_group_manager,
+                "summary_method": "reflection_with_llm",
+                "message": user_proxy.last_message(),
+            }
+        ],
+        trigger=lambda sender: sender is user_proxy and is_technical_question_llm(user_proxy)
+    )
         
-        if user_query.strip():
-            chat_manager.initiate_chat(user_proxy, user_query)
+    # user starts the conversation with the coordinator
+    user_proxy.initiate_chats(
+        [
+            {
+                "recipient": coordinator,
+                "message": "hi",
+            },
+            {
+                "recipient": surveyer,
+                "message": "Based on the provided information, determine whether the user is satisfied with the support experience.",
+                "carryover": "The customer is a newbie AWS user.",
+            }
+        ]
+    )
+
 
 if __name__ == "__main__":
     try:

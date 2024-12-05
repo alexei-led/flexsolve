@@ -435,7 +435,8 @@ def initiate_chat(user_query):
     
     # Function for coordinator to consult with specialists
     async def consult_specialists(coordinator_msg):
-        await coordinator.a_initiate_chat(
+        # Get specialist insights
+        specialist_response = await coordinator.a_initiate_chat(
             specialist_manager,
             message=f"""COORDINATOR REQUEST: {coordinator_msg}
             
@@ -443,13 +444,29 @@ def initiate_chat(user_query):
             1. Suggest relevant technical questions if needed
             2. Provide technical insights and recommendations
             3. Wait for human expert validation when needed""",
+            is_termination_msg=lambda msg: "SPECIALIST_CONSULTATION_COMPLETE" in msg.get("content", "")
         )
+        
+        # Return to main chat with insights
+        if specialist_response:
+            await coordinator.a_send(
+                user_proxy,
+                f"""Based on specialist consultation:
+                {specialist_response}
+                
+                Would you like me to:
+                1. Ask more clarifying questions
+                2. Proceed with solution implementation
+                3. Consult specialists again on specific aspects
+                
+                Please let me know your preference.""",
+            )
     
     # Start the primary chat between user and coordinator
     user_proxy.initiate_chat(
         coordinator,
         message=f"""USER QUERY: {user_query}
-
+        
         Please help resolve this AWS-related issue:
         1. Analyze the query and consult with specialists as needed
         2. Ask clear, focused questions to gather necessary information

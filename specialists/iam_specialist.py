@@ -7,6 +7,7 @@ class IAMSpecialist(BaseSpecialist):
 
     def create_specialist(self):
         """Create the IAM specialist agent."""
+        description = "This agent works with the coordinator to refine the problem and propose solutions for IAM services."
         system_message = """You are an AWS IAM specialist. You have deep expertise in:
         1. IAM roles and policies
         2. Identity federation and SSO
@@ -137,6 +138,9 @@ class IAMSpecialist(BaseSpecialist):
         - Identify cross-account needs
         - Determine federation requirements
         - Collect audit and monitoring needs
-        - Understand resource access patterns"""
+        - Understand resource access patterns
+        
+        Reply "TERMINATE" when you are done.
+        """
 
         return self.create_agent(system_message) 

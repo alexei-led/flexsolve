@@ -7,6 +7,7 @@ class CloudWatchSpecialist(BaseSpecialist):
 
     def create_specialist(self):
         """Create the CloudWatch specialist agent."""
+        description = "This agent works with the coordinator to refine the problem and propose solutions for CloudWatch services."
         system_message = """You are an AWS CloudWatch specialist with deep expertise in:
         1. CloudWatch Metrics and Alarms
         2. CloudWatch Logs and Log Insights
@@ -117,6 +118,10 @@ class CloudWatchSpecialist(BaseSpecialist):
         - Ask about specific metrics and dimensions needed
         - Gather details about alerting and notification needs
         - Understand log aggregation requirements
-        - Query retention and analysis needs"""
+        - Query retention and analysis needs
+        
+        Reply "TERMINATE" when you are done.
+        """
+
 
         return self.create_agent(system_message) 

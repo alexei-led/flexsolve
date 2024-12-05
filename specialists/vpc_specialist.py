@@ -7,6 +7,7 @@ class VPCSpecialist(BaseSpecialist):
 
     def create_specialist(self):
         """Create the VPC specialist agent."""
+        description = "This agent works with the coordinator to refine the problem and propose solutions for VPC services."
         system_message = """You are an AWS VPC specialist. You have deep expertise in:
         1. VPC design and implementation
         2. Subnet management and CIDR planning
@@ -127,6 +128,9 @@ class VPCSpecialist(BaseSpecialist):
         - Identify high availability needs
         - Determine routing requirements
         - Collect compliance requirements
-        - Understand monitoring needs"""
+        - Understand monitoring needs
+        
+        Reply "TERMINATE" when you are done.
+        """
 
         return self.create_agent(system_message) 

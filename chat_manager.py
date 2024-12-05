@@ -38,14 +38,12 @@ class ChatManager:
             content = message.get("content", "")
             # Terminate if human expert has validated the solution
             if message.get("name") == self.human_expert.name and (
-                "SOLUTION VALIDATED" in content or 
-                "IMPLEMENTATION APPROVED" in content
+                "APPROVE" in content
             ):
                 return True
             # Terminate if coordinator indicates completion
             if message.get("name") == self.coordinator.name and (
-                "FINAL SOLUTION" in content or
-                "IMPLEMENTATION PLAN READY" in content
+                "SPECIALIST_CONSULTATION_COMPLETE" in content
             ):
                 return True
         return False
@@ -57,9 +55,6 @@ class ChatManager:
     def print_header(self):
         """Print the FlexSolve header with controls."""
         print(colored("\n=== DoiT FlexSolve ===", "yellow"))
-        print(colored("- Press Enter for new line", "yellow"))
-        print(colored("- Press Ctrl+D to submit", "yellow"))
-        print(colored("- Press Ctrl+Q to quit\n", "yellow"))
 
     def format_prompt(self, message: str, agent_type: str = "user") -> str:
         """Format the prompt message based on agent type."""
@@ -91,7 +86,7 @@ EXPERT REVIEW:
 5. Recommendations:
    [Your suggestions]
 
-Decision: [APPROVED/NEEDS_REVISION]
+Decision: [APPROVE/REJECT]
 Reason: [Brief explanation]
 ```
 """
@@ -175,7 +170,8 @@ Reason: [Brief explanation]
                - Security Review: [Comments]
                - Cost Analysis: [Comments]
                - Risk Assessment: [Comments]
-               Decision: [APPROVED/NEEDS_REVISION]
+               Decision: [APPROVE/REJECT]
+               Reason: [Brief explanation]
                ```
 
             Let's begin by analyzing the request and identifying the key areas that need attention.""",

@@ -7,6 +7,7 @@ class EKSSpecialist(BaseSpecialist):
 
     def create_specialist(self):
         """Create the EKS specialist agent."""
+        description = "This agent works with the coordinator to refine the problem and propose solutions for EKS services."
         system_message = """You are an AWS EKS specialist. You have deep expertise in:
         1. EKS cluster management and troubleshooting
         2. Kubernetes workload optimization
@@ -43,6 +44,9 @@ class EKSSpecialist(BaseSpecialist):
         - Suggest specific technical questions to the coordinator
         - Focus on error messages, logs, or specific behaviors
         - Don't ask for information that should be standard in EKS deployments
-        - Validate assumptions only when they significantly impact the solution"""
+        - Validate assumptions only when they significantly impact the solution
+        
+        Reply "TERMINATE" when you are done.
+        """
 
         return self.create_agent(system_message) 

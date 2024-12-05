@@ -36,3 +36,4 @@ config.py
 *.log
 temp/ 
 .cache/
+playground/
