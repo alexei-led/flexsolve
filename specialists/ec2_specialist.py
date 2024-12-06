@@ -4,11 +4,8 @@ from .base_specialist import BaseSpecialist
 class EC2Specialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("EC2_Specialist", config_list)
-
-    def create_specialist(self):
-        """Create the EC2 specialist agent."""
-        description = "This agent works with the coordinator to refine the problem and propose solutions for EC2 services."
-        system_message = """You are an AWS EC2 specialist. You have deep expertise in:
+        self.description = "This agent works with the coordinator to refine the problem and propose solutions for EC2 services."
+        self.system_message = """You are an AWS EC2 specialist. You have deep expertise in:
         1. EC2 instance types and sizing
         2. Auto Scaling groups
         3. EC2 networking and security
@@ -128,5 +125,3 @@ class EC2Specialist(BaseSpecialist):
         
         Reply "TERMINATE" when you are done.
         """
-
-        return self.create_agent(system_message) 

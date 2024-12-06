@@ -4,11 +4,8 @@ from .base_specialist import BaseSpecialist
 class CloudWatchSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("CloudWatch_Specialist", config_list)
-
-    def create_specialist(self):
-        """Create the CloudWatch specialist agent."""
-        description = "This agent works with the coordinator to refine the problem and propose solutions for CloudWatch services."
-        system_message = """You are an AWS CloudWatch specialist with deep expertise in:
+        self.description = "This agent works with the coordinator to refine the problem and propose solutions for CloudWatch services."
+        self.system_message = """You are an AWS CloudWatch specialist with deep expertise in:
         1. CloudWatch Metrics and Alarms
         2. CloudWatch Logs and Log Insights
         3. CloudWatch Events/EventBridge
@@ -122,6 +119,3 @@ class CloudWatchSpecialist(BaseSpecialist):
         
         Reply "TERMINATE" when you are done.
         """
-
-
-        return self.create_agent(system_message) 

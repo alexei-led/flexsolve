@@ -4,11 +4,8 @@ from .base_specialist import BaseSpecialist
 class IAMSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("IAM_Specialist", config_list)
-
-    def create_specialist(self):
-        """Create the IAM specialist agent."""
-        description = "This agent works with the coordinator to refine the problem and propose solutions for IAM services."
-        system_message = """You are an AWS IAM specialist. You have deep expertise in:
+        self.description = "This agent works with the coordinator to refine the problem and propose solutions for IAM services."
+        self.system_message = """You are an AWS IAM specialist. You have deep expertise in:
         1. IAM roles and policies
         2. Identity federation and SSO
         3. Security best practices
@@ -142,5 +139,3 @@ class IAMSpecialist(BaseSpecialist):
         
         Reply "TERMINATE" when you are done.
         """
-
-        return self.create_agent(system_message) 

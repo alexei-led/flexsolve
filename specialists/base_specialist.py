@@ -10,6 +10,7 @@ class BaseSpecialist:
         """Create a configuration for an agent."""
         return autogen.AssistantAgent(
             name=self.name,
+            description=self.description,
             llm_config={"config_list": self.config_list},
             system_message=system_message,
             human_input_mode=human_input_mode,

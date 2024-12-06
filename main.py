@@ -13,6 +13,13 @@ from specialists import (
     IAMSpecialist
 )
 
+from researchers import (
+    EC2Researcher,
+    IAMResearcher,
+    EKSResearcher,
+    VPCResearcher,
+)
+
 def create_agents():
     """Create all the necessary agents for the system."""
     # Create the user proxy
@@ -63,13 +70,21 @@ def create_agents():
         - Request user confirmation of problem understanding when needed""",
     )
 
+    # Create researchers
+    researchers = [
+        EC2Researcher(OPENAI_CONFIG).create_agent(),
+        IAMResearcher(OPENAI_CONFIG).create_agent(),
+        EKSResearcher(OPENAI_CONFIG).create_agent(),
+        VPCResearcher(OPENAI_CONFIG).create_agent(),
+    ]
+
     # Create specialists
     specialists = [
-        IAMSpecialist(OPENAI_CONFIG).create_specialist(),
-        CloudWatchSpecialist(OPENAI_CONFIG).create_specialist(),
-        EC2Specialist(OPENAI_CONFIG).create_specialist(),
-        EKSSpecialist(OPENAI_CONFIG).create_specialist(),
-        VPCSpecialist(OPENAI_CONFIG).create_specialist(),
+        IAMSpecialist(OPENAI_CONFIG).create_agent(),
+        CloudWatchSpecialist(OPENAI_CONFIG).create_agent(),
+        EC2Specialist(OPENAI_CONFIG).create_agent(),
+        EKSSpecialist(OPENAI_CONFIG).create_agent(),
+        VPCSpecialist(OPENAI_CONFIG).create_agent(),
     ]
 
     # Add new formatter agent
@@ -94,10 +109,6 @@ def create_agents():
     )
 
     return user_proxy, coordinator, specialists, human_expert, formatter
-
-def writing_message(recipient, messages, sender, config):
-    return f"Polish the content to make an engaging and nicely formatted blog post. \n\n {recipient.chat_messages_for_summary(sender)[-1]['content']}"
-
 
 def main():
     """Main application entry point."""
@@ -150,13 +161,6 @@ def main():
         {
             "recipient": specialists_manager,
             "summary_method": "reflection_with_llm",
-            "message": user_proxy.last_message(),
-        },
-        {
-            "recipient": formatter,
-            "summary_method": "last_msg",
-            "message": writing_message,
-            "max_turns": 1,
         },
         {
             "recipient": human_expert,
@@ -167,7 +171,7 @@ def main():
         {
             "recipient": formatter,
             "summary_method": "last_msg",
-            "message": writing_message,
+            "message": "Please format the solution.",
             "max_turns": 1,
         }
     ]

@@ -4,11 +4,8 @@ from .base_specialist import BaseSpecialist
 class VPCSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("VPC_Specialist", config_list)
-
-    def create_specialist(self):
-        """Create the VPC specialist agent."""
-        description = "This agent works with the coordinator to refine the problem and propose solutions for VPC services."
-        system_message = """You are an AWS VPC specialist. You have deep expertise in:
+        self.description = "This agent works with the coordinator to refine the problem and propose solutions for VPC services."
+        self.system_message = """You are an AWS VPC specialist. You have deep expertise in:
         1. VPC design and implementation
         2. Subnet management and CIDR planning
         3. Network security groups and NACLs
@@ -132,5 +129,3 @@ class VPCSpecialist(BaseSpecialist):
         
         Reply "TERMINATE" when you are done.
         """
-
-        return self.create_agent(system_message) 

@@ -4,11 +4,8 @@ from .base_specialist import BaseSpecialist
 class EKSSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("EKS_Specialist", config_list)
-
-    def create_specialist(self):
-        """Create the EKS specialist agent."""
-        description = "This agent works with the coordinator to refine the problem and propose solutions for EKS services."
-        system_message = """You are an AWS EKS specialist. You have deep expertise in:
+        self.description = "This agent works with the coordinator to refine the problem and propose solutions for EKS services."
+        self.system_message = """You are an AWS EKS specialist. You have deep expertise in:
         1. EKS cluster management and troubleshooting
         2. Kubernetes workload optimization
         3. Container orchestration
@@ -48,5 +45,3 @@ class EKSSpecialist(BaseSpecialist):
         
         Reply "TERMINATE" when you are done.
         """
-
-        return self.create_agent(system_message) 
