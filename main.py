@@ -1,11 +1,5 @@
 """Main entry point for the AWS Support System."""
 import autogen
-from termcolor import colored
-from prompt_toolkit import PromptSession
-from prompt_toolkit.shortcuts import message_dialog
-from prompt_toolkit.formatted_text import HTML
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.validation import Validator, ValidationError
 
 from config import (
     OPENAI_CONFIG, USER_PROXY_NAME, COORDINATOR_NAME
@@ -18,8 +12,6 @@ from specialists import (
     VPCSpecialist,
     IAMSpecialist
 )
-from chat_manager import ChatManager
-from utils.input_handler import create_prompt_session, get_user_input
 
 def create_agents():
     """Create all the necessary agents for the system."""
@@ -80,19 +72,44 @@ def create_agents():
         VPCSpecialist(OPENAI_CONFIG).create_specialist(),
     ]
 
-    return user_proxy, coordinator, specialists, human_expert
+    # Add new formatter agent
+    formatter = autogen.AssistantAgent(
+        name="formatter",
+        llm_config={"config_list": OPENAI_CONFIG},
+        system_message="""You are a formatting specialist. Your job is to:
+        1. Format responses from the specialist team
+        2. For questions:
+           - Create numbered or bulleted lists
+           - Highlight key terms in bold
+           - Group related questions
+        3. For solutions:
+           - Create clear step-by-step instructions using markdown
+           - Add proper code blocks with syntax highlighting
+           - Include relevant AWS documentation links
+           - Use headers and sections for better readability
+           - Highlight important warnings or notes
+        
+        Always maintain technical accuracy while improving readability.
+        Reply with the formatted content only, no meta-commentary."""
+    )
+
+    return user_proxy, coordinator, specialists, human_expert, formatter
+
+def writing_message(recipient, messages, sender, config):
+    return f"Polish the content to make an engaging and nicely formatted blog post. \n\n {recipient.chat_messages_for_summary(sender)[-1]['content']}"
+
 
 def main():
     """Main application entry point."""
     # Create agents
-    user_proxy, coordinator, specialists, human_expert = create_agents()
+    user_proxy, coordinator, specialists, human_expert, formatter = create_agents()
     
     # Create group chat with specialists and human expert
     specialist_group = autogen.GroupChat(
         agents=[coordinator, human_expert] + specialists,
         messages=[],
     )
-    specialists_group_manager = autogen.GroupChatManager(
+    specialists_manager = autogen.GroupChatManager(
         groupchat=specialist_group,
         llm_config={"config_list": OPENAI_CONFIG},
     )
@@ -129,14 +146,35 @@ def main():
         # return True if the response is "YES", False otherwise
         return response.summary.strip().upper() == "YES"
 
+    nested_chat_queue = [
+        {
+            "recipient": specialists_manager,
+            "summary_method": "reflection_with_llm",
+            "message": user_proxy.last_message(),
+        },
+        {
+            "recipient": formatter,
+            "summary_method": "last_msg",
+            "message": writing_message,
+            "max_turns": 1,
+        },
+        {
+            "recipient": human_expert,
+            "summary_method": "last_msg",
+            "message": "Please validate the solution.",
+            "max_turns": 1,
+        },
+        {
+            "recipient": formatter,
+            "summary_method": "last_msg",
+            "message": writing_message,
+            "max_turns": 1,
+        }
+    ]
+
+    # Create solution nested chats
     coordinator.register_nested_chats(
-        [
-            {
-                "recipient": specialists_group_manager,
-                "summary_method": "reflection_with_llm",
-                "message": user_proxy.last_message(),
-            }
-        ],
+        nested_chat_queue,
         trigger=lambda sender: sender is user_proxy and is_technical_question_llm(user_proxy)
     )
         

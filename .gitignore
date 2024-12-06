@@ -32,7 +32,6 @@ var/
 *.swo
 
 # Project specific
-config.py
 *.log
 temp/ 
 .cache/
