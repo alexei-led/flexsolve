@@ -5,7 +5,8 @@ class VPCSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("VPC_Specialist", config_list)
         self.description = "This agent works with the coordinator to refine the problem and propose solutions for VPC services."
-        self.system_message = """You are an AWS VPC specialist. You have deep expertise in:
+        
+        vpc_specific_message = """You are an AWS VPC specialist. You have deep expertise in:
         1. VPC design and implementation
         2. Subnet management and CIDR planning
         3. Network security groups and NACLs
@@ -126,6 +127,7 @@ class VPCSpecialist(BaseSpecialist):
         - Determine routing requirements
         - Collect compliance requirements
         - Understand monitoring needs
-        
-        Reply "TERMINATE" when you are done.
         """
+        
+        # Combine the base system message with VPC-specific message
+        self.system_message = vpc_specific_message + self.system_message

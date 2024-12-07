@@ -5,7 +5,8 @@ class EKSSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("EKS_Specialist", config_list)
         self.description = "This agent works with the coordinator to refine the problem and propose solutions for EKS services."
-        self.system_message = """You are an AWS EKS specialist. You have deep expertise in:
+        
+        eks_specific_message = """You are an AWS EKS specialist. You have deep expertise in:
         1. EKS cluster management and troubleshooting
         2. Kubernetes workload optimization
         3. Container orchestration
@@ -43,5 +44,7 @@ class EKSSpecialist(BaseSpecialist):
         - Don't ask for information that should be standard in EKS deployments
         - Validate assumptions only when they significantly impact the solution
         
-        Reply "TERMINATE" when you are done.
-        """
+        """ 
+        
+        # Combine the base system message with EKS-specific message
+        self.system_message = eks_specific_message + self.system_message

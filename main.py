@@ -2,7 +2,7 @@
 
 import autogen
 
-from config import OPENAI_CONFIG, USER_PROXY_NAME, COORDINATOR_NAME
+from config import OPENAI_CONFIG, USER_PROXY_NAME, RESEARCH_COORDINATOR_NAME, SOLUTION_COORDINATOR_NAME
 
 from specialists import (
     EKSSpecialist,
@@ -30,10 +30,11 @@ def create_agents():
         code_execution_config=False,
     )
 
-    # Create the coordinator
-    coordinator = autogen.AssistantAgent(
-        name=COORDINATOR_NAME,
-        system_message="""You are an AWS Research Coordinator focused on problem understanding and clarification.
+    # Create the research coordinator
+    research_coordinator = autogen.AssistantAgent(
+        name=RESEARCH_COORDINATOR_NAME,
+        system_message="""
+            You are an AWS Research Coordinator focused on problem understanding and clarification.
 
             CORE RESPONSIBILITIES:
             1. Direct user interaction
@@ -43,42 +44,126 @@ def create_agents():
             WORKFLOW:
             For technical questions:
             1. Inform user: "I'll consult with our research team to better understand your needs."
-            2. Start researcher group chat
-            3. Guide researchers to:
+            2. Analyze the problem and identify which AWS services are involved
+            3. Engage ALL relevant researchers based on the services involved
+            4. Guide researchers to:
             - Identify knowledge gaps
             - Propose relevant questions
             - Consider edge cases
-            4. Consolidate questions:
+            5. Consolidate ALL researchers' questions into a single list:
             - Remove duplicates
             - Filter out obvious questions
             - Skip anything already mentioned by user
             - Group related questions
-            5. Present consolidated questions to user
-            6. Collect answers for deeper problem understanding
+            6. Format your response as:
+              Problem Understanding:
+              [Summarize the current understanding of the problem]
+              
+              Questions:
+              [If clarification needed]:
+              1. [First question]
+              2. [Second question]
+              ...
+              [If no questions needed]:
+              No additional questions needed - problem is clear.
+              
+              TERMINATE
 
             For greetings:
             - Respond briefly and ask how you can help
 
             RESEARCH MANAGEMENT:
-            - Direct researchers to specific aspects of the problem
+            - Ensure ALL relevant researchers participate based on their expertise
+            - Direct each researcher to their specific domain aspects
             - Keep focus on gathering missing context
+            - Ignore solutions, focus on collecting questions only
             - Ensure questions are:
             * Specific and actionable
             * Relevant to the problem
             * Not already answered
             * Critical for solution design
 
-            QUESTION DELIVERY:
-            - Present questions in clear, numbered format
-            - Group related questions together
-            - Explain briefly why certain information is needed
-            - End with "TERMINATE" when all questions are answered
+            RESPONSE FORMAT:
+            Always structure your response as:
+            Problem Understanding:
+            [Clear summary of the current understanding]
+            
+            Questions:
+            [Numbered list of questions OR "No additional questions needed - problem is clear."]
+            
+            TERMINATE
 
             COMMUNICATION STYLE:
             - Be concise and professional
             - Use clear, technical language
             - Focus on gathering critical information
-            - Avoid assumptions""",
+            - Avoid assumptions
+            """,
+        llm_config={"config_list": OPENAI_CONFIG},
+    )
+    
+    # Create the solution coordinator
+    solution_coordinator = autogen.AssistantAgent(
+        name=SOLUTION_COORDINATOR_NAME,
+        system_message="""
+            You are an AWS Solution Coordinator focused on problem solving and solution design.
+
+            CORE RESPONSIBILITIES:
+            1. Direct user interaction
+            2. Specialist team coordination
+            3. Solution consolidation and refinement
+
+            WORKFLOW:
+            1. Analyze the problem and identify which AWS services are involved
+            2. Engage ALL relevant specialists based on the services involved
+            3. Direct each specialist to focus on their domain expertise
+            4. Guide specialists to:
+               - Propose viable solutions
+               - Consider best practices
+               - Evaluate trade-offs
+            5. Consolidate ALL specialists' solutions into a comprehensive list:
+               - Remove duplicates
+               - Combine complementary approaches
+               - Evaluate each solution for:
+                 * Complexity
+                 * Cost considerations
+                 * Scalability
+                 * Operational overhead
+                 * AWS best practices alignment
+
+            RESPONSE FORMAT:
+            Always structure your response as:
+            
+            Solutions Found:
+            [If solutions exist]:
+            1. [Solution Name]
+               Implementation:
+               - Step 1
+               - Step 2
+               ...
+               Considerations:
+               - Complexity: [Low/Medium/High]
+               - Cost: [Low/Medium/High]
+               - Scalability: [Low/Medium/High]
+               - Best Practices: [List key alignments]
+               - Trade-offs: [List main trade-offs]
+            
+            2. [Next Solution...]
+            
+            [If no viable solutions]:
+            No viable solutions found for the given requirements.
+            
+            Comparison Summary:
+            [Brief comparison of solutions, highlighting key differences and recommendations]
+            
+            TERMINATE
+
+            COMMUNICATION STYLE:
+            - Be concise and technical
+            - Focus on actionable details
+            - Highlight key decision factors
+            - Provide clear recommendations
+        """,
         llm_config={"config_list": OPENAI_CONFIG},
     )
 
@@ -129,34 +214,37 @@ def create_agents():
         Reply with the formatted content only, no meta-commentary.""",
     )
 
-    return user_proxy, coordinator, specialists, researchers, human_expert, formatter
+    return user_proxy, research_coordinator, solution_coordinator, specialists, researchers, human_expert, formatter
 
 
 def main():
     """Main application entry point."""
     # Create agents
-    user_proxy, coordinator, specialists, researchers, human_expert, formatter = create_agents()
-
+    user_proxy, research_coordinator, solution_coordinator, specialists, researchers, human_expert, formatter = create_agents()
+    
+    # Create group chat with researchers
+    researcher_group = autogen.GroupChat(
+        agents=[research_coordinator] + researchers,
+        messages=[],
+        admin_name=research_coordinator.name,
+        select_speaker_auto_verbose=True,
+    )
+    researchers_manager = autogen.GroupChatManager(
+        groupchat=researcher_group,
+        llm_config={"config_list": OPENAI_CONFIG},
+    )
+    
     # Create group chat with specialists
     specialist_group = autogen.GroupChat(
-        agents=[coordinator] + specialists,
+        agents=[research_coordinator] + specialists,
         messages=[],
     )
     specialists_manager = autogen.GroupChatManager(
         groupchat=specialist_group,
         llm_config={"config_list": OPENAI_CONFIG},
     )
-    
-    # Create group chat with researchers
-    researcher_group = autogen.GroupChat(
-        agents=[coordinator] + researchers,
-        messages=[],
-    )
-    researchers_manager = autogen.GroupChatManager(
-        groupchat=researcher_group,
-        llm_config={"config_list": OPENAI_CONFIG},
-    )
 
+    # Create surveyer
     surveyer = autogen.AssistantAgent(
         name="surveyer",
         llm_config={"config_list": OPENAI_CONFIG},
@@ -180,7 +268,7 @@ def main():
                 Reply with "YES" if it is technical, otherwise reply with "NO".
             """,
         )
-        response = coordinator.initiate_chat(
+        response = research_coordinator.initiate_chat(
             recipient=classifier,
             message=agent.last_message(),
             max_turns=1,
@@ -189,42 +277,79 @@ def main():
         # return True if the response is "YES", False otherwise
         return response.summary.strip().upper() == "YES"
 
-    nested_chat_queue = [
+    # Create research nested chats
+    research_nested_chat_queue = [
         {
             "recipient": researchers_manager,
             "summary_method": "reflection_with_llm",
-        },
-        {
-            "recipient": human_expert,
-            "summary_method": "last_msg",
-            "message": """
-                Please validate the solution.
-                Reply with:
-                - 'APPROVE' if the solution is good
-                - 'REWORK: <feedback>' if changes are needed""",
             "max_turns": 1,
         },
+        # {
+        #     "recipient": human_expert,
+        #     "summary_method": "reflection_with_llm",
+        #     "message": """
+        #         Please validate the clarifying questions.
+        #         Reply with:
+        #         - 'APPROVE' if the clarifying questions are good
+        #         - 'REWORK: <feedback>' if changes are needed""",
+        #     "max_turns": 1,
+        # },
         {
             "recipient": formatter,
-            "summary_method": "last_msg",
-            "message": "Please format the clarifying questions.",
+            "summary_method": "reflection_with_llm",
+            "message": "Please format the clarifying questions. Do not invent new questions, only format the questions provided by the researchers.",
             "max_turns": 1,
         },
     ]
+    
+    solution_nested_chat_queue = [
+        {
+            "recipient": specialists_manager,
+            "summary_method": "reflection_with_llm",
+            "max_turns": 1,
+        },
+        # {
+        #     "recipient": human_expert,
+        #     "summary_method": "reflection_with_llm",
+        #     "message": """
+        #         Please validate the solution.
+        #         Reply with:
+        #         - 'APPROVE' if the solution is good
+        #         - 'REWORK: <feedback>' if changes are needed""",
+        # },
+        # {
+        #     "recipient": formatter,
+        #     "summary_method": "reflection_with_llm",
+        #     "message": "Please format the solutions. Do not invent new solutions, only format the solutions provided by the specialists.",
+        #     "max_turns": 1,
+        # },
+    ]
 
-    # Create solution nested chats
-    coordinator.register_nested_chats(
-        nested_chat_queue,
+    # Create research nested chats
+    research_coordinator.register_nested_chats(
+        research_nested_chat_queue,
         trigger=lambda sender: sender is user_proxy
         and is_technical_question_llm(user_proxy),
+    )
+    
+    # Create solution nested chats
+    solution_coordinator.register_nested_chats(
+        solution_nested_chat_queue,
+        trigger=research_coordinator,
     )
 
     # user starts the conversation with the coordinator
     user_proxy.initiate_chats(
         [
             {
-                "recipient": coordinator,
+                "recipient": research_coordinator,
                 "message": "hi",
+                "summary_method": "reflection_with_llm",
+            },
+            {
+                "recipient": solution_coordinator,
+                "message": "Consider initial and clarifying questions and work together to provide valuable solutions.",
+                "summary_method": "reflection_with_llm",
             },
             {
                 "recipient": surveyer,

@@ -5,7 +5,7 @@ class CloudWatchSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("CloudWatch_Specialist", config_list)
         self.description = "This agent works with the coordinator to refine the problem and propose solutions for CloudWatch services."
-        self.system_message = """You are an AWS CloudWatch specialist with deep expertise in:
+        cloudwatch_specific_message = """You are an AWS CloudWatch specialist with deep expertise in:
         1. CloudWatch Metrics and Alarms
         2. CloudWatch Logs and Log Insights
         3. CloudWatch Events/EventBridge
@@ -117,5 +117,7 @@ class CloudWatchSpecialist(BaseSpecialist):
         - Understand log aggregation requirements
         - Query retention and analysis needs
         
-        Reply "TERMINATE" when you are done.
-        """
+        """ 
+        
+        # Combine the base system message with CloudWatch-specific message
+        self.system_message = cloudwatch_specific_message + self.system_message

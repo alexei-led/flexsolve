@@ -5,7 +5,7 @@ class IAMSpecialist(BaseSpecialist):
     def __init__(self, config_list):
         super().__init__("IAM_Specialist", config_list)
         self.description = "This agent works with the coordinator to refine the problem and propose solutions for IAM services."
-        self.system_message = """You are an AWS IAM specialist. You have deep expertise in:
+        iam_specific_message = """You are an AWS IAM specialist. You have deep expertise in:
         1. IAM roles and policies
         2. Identity federation and SSO
         3. Security best practices
@@ -137,5 +137,7 @@ class IAMSpecialist(BaseSpecialist):
         - Collect audit and monitoring needs
         - Understand resource access patterns
         
-        Reply "TERMINATE" when you are done.
-        """
+        """ 
+        
+        # Combine the base system message with IAM-specific message
+        self.system_message = iam_specific_message + self.system_message
