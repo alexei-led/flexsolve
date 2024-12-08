@@ -93,64 +93,59 @@ def create_agents():
     solution_coordinator = autogen.AssistantAgent(
         name=SOLUTION_COORDINATOR_NAME,
         system_message="""
-            You are an AWS Solution Coordinator focused on problem solving and solution design.
+            You are an AWS Solution Coordinator managing a team of AWS service specialists. Your role is to coordinate solution development.
 
             CORE RESPONSIBILITIES:
-            1. Direct user interaction
-            2. Specialist team coordination
-            3. Solution consolidation and refinement
+            1. Analyze user's requirements and context
+            2. Route to relevant specialists for solutions
+            3. Consolidate specialists' solutions
+            4. Present organized solutions to user
 
             WORKFLOW:
-            1. Analyze the problem and identify which AWS services are involved
-            2. Engage ALL relevant specialists based on the services involved
-            3. Direct each specialist to focus on their domain expertise
-            4. Guide specialists to:
-               - Propose viable solutions
-               - Consider best practices
-               - Evaluate trade-offs
-            5. Consolidate ALL specialists' solutions into a comprehensive list:
-               - Remove duplicates
-               - Combine complementary approaches
-               - Evaluate each solution for:
-                 * Complexity
-                 * Cost considerations
-                 * Scalability
-                 * Operational overhead
-                 * AWS best practices alignment
+            1. For user's input:
+               - Identify mentioned AWS services
+               - Note potential related services
+               - Review provided technical context
+
+            2. When engaging specialists:
+               - Include ALL potentially relevant specialists
+               - Provide clear context of the problem
+               - Share all requirements and constraints
+               - Request specific solution components
+
+            3. When consolidating solutions:
+               - Group by AWS service/approach
+               - Remove duplicate solutions
+               - Preserve implementation details
+               - DO NOT create new solutions
+               - DO NOT modify specialist solutions
 
             RESPONSE FORMAT:
-            Always structure your response as:
-            
-            Solutions Found:
-            [If solutions exist]:
-            1. [Solution Name]
-               Implementation:
-               - Step 1
-               - Step 2
-               ...
-               Considerations:
-               - Complexity: [Low/Medium/High]
-               - Cost: [Low/Medium/High]
-               - Scalability: [Low/Medium/High]
-               - Best Practices: [List key alignments]
-               - Trade-offs: [List main trade-offs]
-            
-            2. [Next Solution...]
-            
-            [If no viable solutions]:
-            No viable solutions found for the given requirements.
-            
-            Comparison Summary:
-            [Brief comparison of solutions, highlighting key differences and recommendations]
-            
-            TERMINATE
+            For technical solutions:
+            "Routing to specialist team for [solution type].
+            Will return with proposed solutions."
 
-            COMMUNICATION STYLE:
-            - Be concise and technical
-            - Focus on actionable details
-            - Highlight key decision factors
-            - Provide clear recommendations
-        """,
+            After receiving specialist input:
+            "Based on our specialist team's analysis:
+
+            [Solution Approach 1]:
+            - Implementation details
+            - Considerations
+
+            [Solution Approach 2]:
+            - Implementation details
+            - Considerations"
+
+            Reply with TERMINATE when:
+            - Solutions have been provided
+            - No viable solutions exist
+            - Further context is needed
+
+            IMPORTANT:
+            - Never create solutions yourself
+            - Only use solutions from specialists
+            - Focus on solution coordination
+            """,
         llm_config={"config_list": OPENAI_CONFIG},
     )
 
@@ -214,6 +209,7 @@ def main():
         agents=researchers,
         messages=[],
         speaker_selection_method="auto",
+        select_speaker_auto_verbose=True,
         allow_repeat_speaker=False,
         max_round=2,
     )
@@ -224,9 +220,12 @@ def main():
     
     # Create group chat with specialists
     specialist_group = autogen.GroupChat(
-        agents=specialists,
+        agents=specialists + [solution_coordinator],
         messages=[],
+        speaker_selection_method="auto",
         select_speaker_auto_verbose=True,
+        allow_repeat_speaker=False,
+        max_round=1,
     )
     specialists_manager = autogen.GroupChatManager(
         groupchat=specialist_group,
@@ -306,15 +305,18 @@ def main():
                     2. Group questions by AWS service
                     3. Remove duplicates while preserving context
                     4. Do not invent new questions, use the questions provided by the researchers only!
+                    5. Number the questions sequentially
                     
                     Format: 
                     [Service/Topic 1]:
-                    - Question 1 
-                    - Question 2
+                    1. Question 1 
+                    2. Question 2
+                    ...
 
                     [Service/Topic 2]:
-                    - Question 3
-                    - Question 4
+                    3. Question 3
+                    4. Question 4
+                    ...
 
                     IMPORTANT:
                     - Only use questions from researchers
@@ -336,28 +338,45 @@ def main():
         {
             "recipient": specialists_manager,
             "summary_method": "reflection_with_llm",
+            "summary_args": { 
+                "summary_prompt": """
+                    Analyze all specialist responses and:
+                    1. Identify complete solution approaches
+                    2. Group solutions by implementation strategy
+                    3. Remove duplicates while preserving details
+                    4. Do not invent new solutions, use the solutions provided by the specialists only!
+                    
+                    Format: 
+                    [Solution Approach 1]:
+                    Implementation:
+                    - Step 1
+                    - Step 2
+                    ...
+                    Considerations:
+                    - Complexity: [Low/Medium/High]
+                    - Cost: [Low/Medium/High]
+                    - Scalability: [Low/Medium/High]
+                    - Best Practices: [List key alignments]
+                    - Trade-offs: [List main trade-offs]
+
+                    [Solution Approach 2]:
+                    ...
+
+                    IMPORTANT:
+                    - Only use solutions from specialists
+                    - Remove duplicate approaches
+                    - Group similar solutions together
+                    - Keep implementation details complete
+                    - Preserve all technical specifications
+                    """
+            },
         },
-        # {
-        #     "recipient": human_expert,
-        #     "summary_method": "reflection_with_llm",
-        #     "message": """
-        #         Please validate the solution.
-        #         Reply with:
-        #         - 'APPROVE' if the solution is good
-        #         - 'REWORK: <feedback>' if changes are needed""",
-        # },
-        # {
-        #     "recipient": formatter,
-        #     "summary_method": "reflection_with_llm",
-        #     "message": "Please format the solutions. Do not invent new solutions, only format the solutions provided by the specialists.",
-        #     "max_turns": 1,
-        # },
     ]
 
     # Create solution nested chats
     solution_coordinator.register_nested_chats(
         solution_nested_chat_queue,
-        trigger=research_coordinator,
+        trigger=user_proxy,
     )
 
     # user starts the conversation with the coordinator
@@ -370,7 +389,6 @@ def main():
             },
             {
                 "recipient": solution_coordinator,
-                "message": "Consider initial and clarifying questions and work together to provide valuable solutions.",
                 "summary_method": "reflection_with_llm",
             },
             {

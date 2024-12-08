@@ -20,14 +20,14 @@ class BaseResearcher:
            - Stay silent (don't respond at all)
            - Let other specialists handle their domains
         
-        Return ONLY a numbered list of essential questions if:
+        Return ONLY a list of essential questions if:
         - The topic relates to your expertise AND
         - Required information is missing AND
         - The answers would significantly impact the solution
         
         Format your response as:
-        1. [Your first question]
-        2. [Your second question]
+        - [Your first question]
+        - [Your second question]
         ...
         
         IMPORTANT:
