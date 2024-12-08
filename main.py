@@ -175,34 +175,13 @@ def create_agents():
         VPCSpecialist(OPENAI_CONFIG).create_agent(),
     ]
 
-    # Add new formatter agent
-    formatter = autogen.AssistantAgent(
-        name="formatter",
-        llm_config={"config_list": OPENAI_CONFIG},
-        system_message="""You are a formatting specialist. Your job is to:
-        1. Format responses from the specialist team
-        2. For questions:
-           - Create numbered or bulleted lists
-           - Highlight key terms in bold
-           - Group related questions
-        3. For solutions:
-           - Create clear step-by-step instructions using markdown
-           - Add proper code blocks with syntax highlighting
-           - Include relevant AWS documentation links
-           - Use headers and sections for better readability
-           - Highlight important warnings or notes
-        
-        Always maintain technical accuracy while improving readability.
-        Reply with the formatted content only, no meta-commentary.""",
-    )
-
-    return user_proxy, research_coordinator, solution_coordinator, specialists, researchers, human_expert, formatter
+    return user_proxy, research_coordinator, solution_coordinator, specialists, researchers, human_expert
 
 
 def main():
     """Main application entry point."""
     # Create agents
-    user_proxy, research_coordinator, solution_coordinator, specialists, researchers, human_expert, formatter = create_agents()
+    user_proxy, research_coordinator, solution_coordinator, specialists, researchers, human_expert = create_agents()
     
     # Create group chat with researchers
     researcher_group = autogen.GroupChat(

@@ -1,21 +1,15 @@
-# AWS Support System with AutoGen
+# AWS Support System
 
-A sophisticated multi-agent system that simulates collaboration between AI specialists and human experts to solve AWS-related queries. The system uses nested conversations and specialized agents to provide comprehensive AWS solutions.
+An intelligent AWS support system using AutoGen agents to provide contextual AWS support through specialized researchers and solution providers.
 
-## Features
+## Overview
 
-### AI Specialists
-- **EKS Specialist**: Kubernetes and container orchestration
-- **EC2 Specialist**: Compute and instance management
-- **VPC Specialist**: Networking and connectivity
-- **IAM Specialist**: Security and access management
-- **CloudWatch Specialist**: Monitoring and observability
-
-### Core Components
-- **Coordinator**: Manages workflow and communication
-- **Human Expert**: Validates solutions and architectural decisions
-- **Rich Terminal UI**: Multi-line input with syntax highlighting
-- **Structured Response Formats**: Clear, actionable solutions
+This system uses multiple AI agents to:
+1. Analyze user questions about AWS services
+2. Gather necessary context through researchers
+3. Provide detailed solutions through specialists
+4. Format responses for optimal readability
+5. Collect user satisfaction metrics
 
 ## Architecture
 
