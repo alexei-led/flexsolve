@@ -190,7 +190,7 @@ def main():
         speaker_selection_method="auto",
         select_speaker_auto_verbose=True,
         allow_repeat_speaker=False,
-        max_round=2,
+        max_round=10,
     )
     researchers_manager = autogen.GroupChatManager(
         groupchat=researcher_group,
@@ -204,7 +204,7 @@ def main():
         speaker_selection_method="auto",
         select_speaker_auto_verbose=True,
         allow_repeat_speaker=False,
-        max_round=2,
+        max_round=10,
     )
     specialists_manager = autogen.GroupChatManager(
         groupchat=specialist_group,
