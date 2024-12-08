@@ -225,7 +225,7 @@ def main():
         speaker_selection_method="auto",
         select_speaker_auto_verbose=True,
         allow_repeat_speaker=False,
-        max_round=1,
+        max_round=2,
     )
     specialists_manager = autogen.GroupChatManager(
         groupchat=specialist_group,
@@ -378,7 +378,7 @@ def main():
         solution_nested_chat_queue,
         trigger=user_proxy,
     )
-
+    
     # user starts the conversation with the coordinator
     user_proxy.initiate_chats(
         [
@@ -389,7 +389,8 @@ def main():
             },
             {
                 "recipient": solution_coordinator,
-                "summary_method": "reflection_with_llm",
+                "message": "Based on the research findings, create a detailed solution plan.",
+                "summary_method": "last_msg",
             },
             {
                 "recipient": surveyer,
