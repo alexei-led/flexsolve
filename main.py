@@ -30,74 +30,61 @@ def create_agents():
         code_execution_config=False,
     )
 
-    # Create the research coordinator
+    # Create the research coordinator with simplified prompt
     research_coordinator = autogen.AssistantAgent(
         name=RESEARCH_COORDINATOR_NAME,
         system_message="""
-            You are an AWS Research Coordinator focused on problem understanding and clarification.
+            You are an AWS Research Coordinator managing a team of AWS service researchers. Your role is to gather context through clarifying questions ONLY.
 
             CORE RESPONSIBILITIES:
-            1. Direct user interaction
-            2. Research team coordination
-            3. Question consolidation and refinement
+            1. Analyze user's initial problem
+            2. Route to relevant researchers for questions
+            3. Consolidate researchers' questions
+            4. Present organized questions to user
 
             WORKFLOW:
-            For technical questions:
-            1. Inform user: "I'll consult with our research team to better understand your needs."
-            2. Analyze the problem and identify which AWS services are involved
-            3. Engage ALL relevant researchers based on the services involved
-            4. Guide researchers to:
-            - Identify knowledge gaps
-            - Propose relevant questions
-            - Consider edge cases
-            5. Consolidate ALL researchers' questions into a single list:
-            - Remove duplicates
-            - Filter out obvious questions
-            - Skip anything already mentioned by user
-            - Group related questions
-            6. Format your response as:
-              Problem Understanding:
-              [Summarize the current understanding of the problem]
-              
-              Questions:
-              [If clarification needed]:
-              1. [First question]
-              2. [Second question]
-              ...
-              [If no questions needed]:
-              No additional questions needed - problem is clear.
-              
-              TERMINATE
+            1. For user's input:
+               - Identify mentioned AWS services
+               - Note potential related services
+               - Spot missing technical context
 
-            For greetings:
-            - Respond briefly and ask how you can help
+            2. When engaging researchers:
+               - Include ALL potentially relevant researchers
+               - Provide clear context of the problem
+               - Request specific types of questions needed
 
-            RESEARCH MANAGEMENT:
-            - Ensure ALL relevant researchers participate based on their expertise
-            - Direct each researcher to their specific domain aspects
-            - Keep focus on gathering missing context
-            - Ignore solutions, focus on collecting questions only
-            - Ensure questions are:
-            * Specific and actionable
-            * Relevant to the problem
-            * Not already answered
-            * Critical for solution design
+            3. When consolidating questions:
+               - Group by AWS service/topic
+               - Remove duplicate questions
+               - Preserve technical context
+               - DO NOT create new questions
+               - DO NOT suggest solutions
 
             RESPONSE FORMAT:
-            Always structure your response as:
-            Problem Understanding:
-            [Clear summary of the current understanding]
-            
-            Questions:
-            [Numbered list of questions OR "No additional questions needed - problem is clear."]
-            
-            TERMINATE
+            For technical queries:
+            "Routing to research team for [context gaps].
+            Will return with clarifying questions."
 
-            COMMUNICATION STYLE:
-            - Be concise and professional
-            - Use clear, technical language
-            - Focus on gathering critical information
-            - Avoid assumptions
+            After receiving researcher input:
+            "Based on our research team's analysis:
+
+            [Service/Topic 1]:
+            - Question 1
+            - Question 2
+
+            [Service/Topic 2]:
+            - Question 3
+            - Question 4"
+
+            Reply with TERMINATE when:
+            - User provides answers to questions
+            - Interaction is non-technical
+            - No further context is needed
+
+            IMPORTANT:
+            - Never suggest solutions
+            - Only use questions from researchers
+            - Focus on gathering context
             """,
         llm_config={"config_list": OPENAI_CONFIG},
     )
@@ -224,10 +211,11 @@ def main():
     
     # Create group chat with researchers
     researcher_group = autogen.GroupChat(
-        agents=[research_coordinator] + researchers,
+        agents=researchers,
         messages=[],
-        admin_name=research_coordinator.name,
-        select_speaker_auto_verbose=True,
+        speaker_selection_method="auto",
+        allow_repeat_speaker=False,
+        max_round=2,
     )
     researchers_manager = autogen.GroupChatManager(
         groupchat=researcher_group,
@@ -236,8 +224,9 @@ def main():
     
     # Create group chat with specialists
     specialist_group = autogen.GroupChat(
-        agents=[research_coordinator] + specialists,
+        agents=specialists,
         messages=[],
+        select_speaker_auto_verbose=True,
     )
     specialists_manager = autogen.GroupChatManager(
         groupchat=specialist_group,
@@ -274,39 +263,79 @@ def main():
             max_turns=1,
         )
 
-        # return True if the response is "YES", False otherwise
         return response.summary.strip().upper() == "YES"
+
+    # Function to handle follow-up questions that returns boolean
+    def should_trigger_research(sender):
+        # Only trigger for user_proxy messages
+        if sender is not user_proxy:
+            return False
+            
+        # Get last message
+        try:
+            last_message = sender.last_message()['content']  # Extract the content from the message dict
+        except:
+            return False
+            
+        # Skip empty messages
+        if not last_message:
+            return False
+            
+        # First check if it's a technical question
+        is_technical = is_technical_question_llm(sender)
+        
+        # For non-technical initial messages, don't trigger research
+        if not is_technical and "TERMINATE" not in last_message:
+            return False
+            
+        # For technical questions or responses to clarifying questions
+        if is_technical or (last_message and "TERMINATE" not in last_message and len(last_message.strip()) > 0):
+            return True
+            
+        return False
 
     # Create research nested chats
     research_nested_chat_queue = [
         {
             "recipient": researchers_manager,
             "summary_method": "reflection_with_llm",
-            "max_turns": 1,
-        },
-        # {
-        #     "recipient": human_expert,
-        #     "summary_method": "reflection_with_llm",
-        #     "message": """
-        #         Please validate the clarifying questions.
-        #         Reply with:
-        #         - 'APPROVE' if the clarifying questions are good
-        #         - 'REWORK: <feedback>' if changes are needed""",
-        #     "max_turns": 1,
-        # },
-        {
-            "recipient": formatter,
-            "summary_method": "reflection_with_llm",
-            "message": "Please format the clarifying questions. Do not invent new questions, only format the questions provided by the researchers.",
-            "max_turns": 1,
+            "summary_args": { 
+                "summary_prompt": """
+                    Analyze all researcher responses and:
+                    1. Identify missing technical details
+                    2. Group questions by AWS service
+                    3. Remove duplicates while preserving context
+                    4. Do not invent new questions, use the questions provided by the researchers only!
+                    
+                    Format: 
+                    [Service/Topic 1]:
+                    - Question 1 
+                    - Question 2
+
+                    [Service/Topic 2]:
+                    - Question 3
+                    - Question 4
+
+                    IMPORTANT:
+                    - Only use questions from researchers
+                    - Remove questions about info already provided
+                    - Group similar questions together
+                    - Keep questions focused and non-redundant
+                """
+            },
         },
     ]
+
+    # Register research nested chats with fixed trigger
+    research_coordinator.register_nested_chats(
+        research_nested_chat_queue,
+        trigger=should_trigger_research,
+    )
     
     solution_nested_chat_queue = [
         {
             "recipient": specialists_manager,
             "summary_method": "reflection_with_llm",
-            "max_turns": 1,
         },
         # {
         #     "recipient": human_expert,
@@ -325,13 +354,6 @@ def main():
         # },
     ]
 
-    # Create research nested chats
-    research_coordinator.register_nested_chats(
-        research_nested_chat_queue,
-        trigger=lambda sender: sender is user_proxy
-        and is_technical_question_llm(user_proxy),
-    )
-    
     # Create solution nested chats
     solution_coordinator.register_nested_chats(
         solution_nested_chat_queue,

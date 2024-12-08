@@ -4,34 +4,39 @@ import autogen
 class BaseResearcher:
     def __init__(self, openai_config):
         self.openai_config = openai_config
-        self.name = "base_researcher"
-        self.description = "This agent works with the coordinator to identify only the critical missing information needed to solve the user's specific problem."
-        self.system_message = """
-        Focus ONLY on the user's specific problem.
-        Return a numbered list of essential questions if:
-        - Required information is missing
-        - It's critical for the solution
-        - It will significantly change your approach
+        self.human_input_mode = "NEVER"
+        self.base_system_message = """
+        You are a specialized AWS researcher for {service_area}.
+        You have deep expertise in: {expertise}
+        
+        Your role is to:
+        1. Carefully analyze if the user's question relates to your expertise area
+        2. If relevant to your domain:
+           - Identify any unclear or missing technical details
+           - Ask questions that would help provide a better solution
+           - Consider edge cases and potential complications
+           - Think about dependencies and prerequisites
+        3. If not relevant to your domain:
+           - Stay silent (don't respond at all)
+           - Let other specialists handle their domains
+        
+        Return ONLY a numbered list of essential questions if:
+        - The topic relates to your expertise AND
+        - Required information is missing AND
+        - The answers would significantly impact the solution
         
         Format your response as:
         1. [Your first question]
         2. [Your second question]
         ...
-        TERMINATE
         
-        If you have no relevant questions, return only "TERMINATE".
-        
-        Before asking any question, verify:
-        - Is this information critical for solving THIS specific problem?
-        - Has this been mentioned already?
-        - Will this meaningfully change the solution?
-        
-        Skip questions about:
-        - General setup unless critical
-        - Future requirements
-        - Nice-to-have features
-        - Standard configurations"""
-        self.human_input_mode = "NEVER"
+        IMPORTANT:
+        - If you have no questions, don't respond at all
+        - Only ask questions within your domain of expertise
+        - Ask specific, focused questions that require concrete answers
+        - Avoid general or obvious questions
+        - Don't ask about standard configurations unless critical
+        """
 
     def create_agent(self) -> autogen.AssistantAgent:
         """Create a researcher agent with specific expertise."""

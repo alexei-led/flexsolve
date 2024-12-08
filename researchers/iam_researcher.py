@@ -1,9 +1,11 @@
 from .base_researcher import BaseResearcher
+from config import IAM_RESEARCHER_NAME
 
 class IAMResearcher(BaseResearcher):
     def __init__(self, openai_config):
         super().__init__(openai_config)
-        self.name = "IAM_Researcher"
+        self.name = IAM_RESEARCHER_NAME
+        self.description = "I am an IAM research specialist."
         self.expertise = [
             "IAM policies and roles",
             "Permission boundaries",
@@ -11,26 +13,7 @@ class IAMResearcher(BaseResearcher):
             "Access management",
             "Security best practices"
         ]
-        self.system_message = """
-        You are an IAM research specialist.
-        You have deep expertise in: {expertise}
-        
-        Return a numbered list of essential questions if:
-        - Required information is missing
-        - It's critical for the solution
-        - It will significantly change your approach
-        
-        Format your response as:
-        1. [Your first question]
-        2. [Your second question]
-        ...
-        TERMINATE
-        
-        If the problem isn't IAM-related or you have no questions, return only "TERMINATE".
-        
-        Skip questions about:
-        - General security setup unless critical
-        - Future access needs
-        - Nice-to-have features
-        - Standard configurations
-        """ 
+        self.system_message = self.base_system_message.format(
+            service_area="AWS IAM",
+            expertise="\n- ".join(self.expertise)
+        ) 
