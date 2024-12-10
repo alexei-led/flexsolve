@@ -83,11 +83,7 @@ def create_agents():
                - For REWORK: Route back to researchers with feedback
 
             RESPONSE FORMAT:
-            For technical queries:
-            "Routing to research team for [context gaps].
-            Will return with clarifying questions."
-
-            After receiving researcher input or APPROVE:
+            After receiving researchers' input or APPROVE from Human Expert:
             "Based on our research team's analysis:
 
             [Service/Topic 1]:
@@ -102,6 +98,7 @@ def create_agents():
             - User provides answers to questions
             - Interaction is non-technical
             - No further context is needed
+            - Human Expert has approved the questions with "APPROVE"
 
             IMPORTANT:
             - Never suggest solutions
@@ -150,10 +147,6 @@ def create_agents():
                - For REWORK: Route back to specialists with feedback
 
             RESPONSE FORMAT:
-            For technical solutions:
-            "Routing to specialist team for [solution type].
-            Will return with proposed solutions."
-
             After receiving specialist input or APPROVE from Human Expert:
             "Based on our specialist team's analysis:
 
@@ -169,6 +162,7 @@ def create_agents():
             - Solutions have been provided
             - No viable solutions exist
             - Further context is needed
+            - Human Expert has approved the solutions with "APPROVE"
 
             IMPORTANT:
             - Never create solutions yourself
@@ -198,6 +192,7 @@ def create_agents():
             
             Reply with TERMINATE when APPROVED (questions or solutions)
         """,
+        is_termination_msg=lambda x: x.get("content", "").find("APPROVE") >= 0,
     )
 
     # Create researchers
@@ -381,33 +376,47 @@ def main():
             "summary_args": { 
                 "summary_prompt": """
                     Analyze all specialist responses and:
-                    1. Identify complete solution approaches
-                    2. Group solutions by implementation strategy
+                    1. Identify complete solution components
+                    2. Group by action categories (Investigation/Configuration/Implementation/Optimization)
                     3. Remove duplicates while preserving details
                     4. Do not invent new solutions, use the solutions provided by the specialists only!
                     
                     Format: 
-                    [Solution Approach 1]:
-                    Implementation:
-                    - Step 1
-                    - Step 2
-                    ...
-                    Considerations:
+                    🔍 Investigation Tasks:
+                    - Task description
+                    - Implementation steps
+                    - Expected outcome
+                    
+                    ⚙️ Configuration Changes:
+                    - Change description
+                    - Implementation steps
+                    - Expected outcome
+                    
+                    🛠️ Implementation Steps:
+                    - Component description
+                    - Implementation steps
+                    - Expected outcome
+                    
+                    📈 Optimization Recommendations:
+                    - Recommendation description
+                    - Implementation steps
+                    - Expected outcome
+                    
+                    For each task/change:
+                    Technical Details:
                     - Complexity: [Low/Medium/High]
-                    - Cost: [Low/Medium/High]
-                    - Scalability: [Low/Medium/High]
-                    - Best Practices: [List key alignments]
-                    - Trade-offs: [List main trade-offs]
-
-                    [Solution Approach 2]:
-                    ...
+                    - Cost Impact: [Low/Medium/High]
+                    - Time Estimate: [Quick/Medium/Long]
+                    - Dependencies: [List any prerequisites]
+                    - Risk Level: [Low/Medium/High]
 
                     IMPORTANT:
                     - Only use solutions from specialists
                     - Remove duplicate approaches
-                    - Group similar solutions together
+                    - Tasks may be dependent on each other
                     - Keep implementation details complete
                     - Preserve all technical specifications
+                    - Order tasks logically if there are dependencies
                     """
             },
         },
