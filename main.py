@@ -118,45 +118,24 @@ def create_agents():
             CORE RESPONSIBILITIES:
             1. Analyze user's requirements and context
             2. Route to relevant specialists for solutions
-            3. Consolidate specialists' solutions
-            4. Validate solutions with human expert before presenting to user
-            5. Rework solutions if human expert requests it (repeat the process)
-            6. Present organized solutions to user if approved by human expert
+            3. Present specialists' solutions exactly as provided after human expert approval
+            4. DO NOT modify or rewrite specialist solutions
+            5. DO NOT create new solutions or formats
 
             WORKFLOW:
             1. For user's input:
                - Identify mentioned AWS services
-               - Note potential related services
-               - Review provided technical context
+               - Route to relevant specialists
 
-            2. When engaging specialists:
-               - Include ALL potentially relevant specialists
-               - Provide clear context of the problem
-               - Share all requirements and constraints
-               - Request specific solution components
-
-            3. When consolidating solutions:
-               - Group by AWS service/approach
-               - Remove duplicate solutions
-               - Preserve implementation details
-               - DO NOT create new solutions
-               - DO NOT modify specialist solutions
+            2. When presenting solutions:
+               - Present the exact solutions provided by specialists and approved by human expert
+               - Maintain all technical details, code examples, and formatting
+               - Include all implementation steps and commands
+               - Preserve the original structure and examples
                
-            4. When handling Human Expert responses:
+            3. When handling Human Expert responses:
                - For APPROVE: Present the exact approved solutions to the user
                - For REWORK: Route back to specialists with feedback
-
-            RESPONSE FORMAT:
-            After receiving specialist input or APPROVE from Human Expert:
-            "Based on our specialist team's analysis:
-
-            [Solution Approach 1]:
-            - Implementation details
-            - Considerations
-
-            [Solution Approach 2]:
-            - Implementation details
-            - Considerations"
 
             Reply with TERMINATE when:
             - Solutions have been provided
@@ -165,10 +144,10 @@ def create_agents():
             - Human Expert has approved the solutions with "APPROVE"
 
             IMPORTANT:
-            - Never create solutions yourself
-            - Only use solutions from specialists
-            - Focus on solution coordination
-            - Preserve approved solutions exactly as reviewed
+            - Never modify specialist solutions
+            - Present solutions exactly as approved
+            - Maintain all technical details and examples
+            - Keep original formatting and structure
             """,
         llm_config={"config_list": OPENAI_CONFIG},
     )
@@ -375,48 +354,41 @@ def main():
             "summary_method": "reflection_with_llm",
             "summary_args": { 
                 "summary_prompt": """
-                    Analyze all specialist responses and:
-                    1. Identify complete solution components
-                    2. Group by action categories (Investigation/Configuration/Implementation/Optimization)
-                    3. Remove duplicates while preserving details
-                    4. Do not invent new solutions, use the solutions provided by the specialists only!
+                    Present the specialists' solutions exactly as provided, with NO modifications:
+
+                    1. DO NOT rewrite or reformat solutions
+                    2. DO NOT modify any technical details or examples
+                    3. DO NOT summarize or shorten solutions
                     
-                    Format: 
-                    🔍 Investigation Tasks:
-                    - Task description
-                    - Implementation steps
-                    - Expected outcome
-                    
-                    ⚙️ Configuration Changes:
-                    - Change description
-                    - Implementation steps
-                    - Expected outcome
-                    
-                    🛠️ Implementation Steps:
-                    - Component description
-                    - Implementation steps
-                    - Expected outcome
-                    
-                    📈 Optimization Recommendations:
-                    - Recommendation description
-                    - Implementation steps
-                    - Expected outcome
-                    
-                    For each task/change:
-                    Technical Details:
-                    - Complexity: [Low/Medium/High]
-                    - Cost Impact: [Low/Medium/High]
-                    - Time Estimate: [Quick/Medium/Long]
-                    - Dependencies: [List any prerequisites]
-                    - Risk Level: [Low/Medium/High]
+                    ALLOWED MODIFICATIONS:
+                    1. REMOVE duplicate solutions
+                    2. REMOVE solutions that are not relevant to the user's problem
+                    3. For conflicting solutions, keep the one that is most relevant (by most relevant expert) to the user's problem and REMOVE the others
+
+                    For each specialist that provided a solution:
+                    1. Include their complete solution with all:
+                       - Code examples
+                       - Implementation steps
+                       - Commands
+                       - YAML files
+                       - Technical details
+                       - Considerations
+                    2. Maintain their original formatting and structure
+                    3. Keep all explanations and comments
+
+                    Format:
+                    [Specialist Name]'s Solution:
+                    [Present their complete solution exactly as provided]
+
+                    [Next Specialist Name]'s Solution:
+                    [Present their complete solution exactly as provided]
 
                     IMPORTANT:
-                    - Only use solutions from specialists
-                    - Remove duplicate approaches
-                    - Tasks may be dependent on each other
-                    - Keep implementation details complete
-                    - Preserve all technical specifications
-                    - Order tasks logically if there are dependencies
+                    - This is a direct presentation task, not a summarization
+                    - Keep all technical details intact
+                    - Preserve code blocks and examples exactly as given
+                    - Maintain original formatting and structure
+                    - Do not add any additional commentary or organization
                     """
             },
         },

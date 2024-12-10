@@ -30,8 +30,6 @@ class BaseSpecialist:
         
         [If no viable solution]:
         No viable solution available for the given requirements.
-        
-        TERMINATE
         """
         self.human_input_mode = "NEVER"
         
