@@ -26,7 +26,7 @@ IAM_SPECIALIST_NAME = "IAM_Specialist"
 IAM_RESEARCHER_NAME = "IAM_Researcher"
 CLOUDWATCH_SPECIALIST_NAME = "CloudWatch_Specialist"
 CLOUDWATCH_RESEARCHER_NAME = "CloudWatch_Researcher"
-HUMAN_EXPERT_NAME = "AWS_Architect"
+HUMAN_EXPERT_NAME = "Human_Expert"
 
 
 # Chat configuration

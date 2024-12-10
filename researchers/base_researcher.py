@@ -26,8 +26,8 @@ class BaseResearcher:
         - The answers would significantly impact the solution
         
         Format your response as:
-        - [Your first question]
-        - [Your second question]
+        1. [Your first question]
+        2. [Your second question]
         ...
         
         IMPORTANT:

@@ -2,7 +2,7 @@
 
 import autogen
 
-from config import OPENAI_CONFIG, USER_PROXY_NAME, RESEARCH_COORDINATOR_NAME, SOLUTION_COORDINATOR_NAME
+from config import OPENAI_CONFIG, USER_PROXY_NAME, RESEARCH_COORDINATOR_NAME, SOLUTION_COORDINATOR_NAME, HUMAN_EXPERT_NAME
 
 from specialists import (
     EKSSpecialist,
@@ -30,7 +30,7 @@ def create_agents():
         code_execution_config=False,
     )
 
-    # Create the research coordinator with simplified prompt
+    # Create the research coordinator with modified prompt
     research_coordinator = autogen.AssistantAgent(
         name=RESEARCH_COORDINATOR_NAME,
         system_message="""
@@ -40,7 +40,9 @@ def create_agents():
             1. Analyze user's initial problem
             2. Route to relevant researchers for questions
             3. Consolidate researchers' questions
-            4. Present organized questions to user
+            4. Validate questions with human expert before presenting to user
+            5. Rework questions if human expert requests it (repeat the process)
+            6. Present organized questions to user if approved by human expert
 
             WORKFLOW:
             1. For user's input:
@@ -60,21 +62,25 @@ def create_agents():
                - DO NOT create new questions
                - DO NOT suggest solutions
 
+            4. When handling Human Expert responses:
+               - For APPROVE: Present the exact approved questions to the user
+               - For REWORK: Route back to researchers with feedback
+
             RESPONSE FORMAT:
             For technical queries:
             "Routing to research team for [context gaps].
             Will return with clarifying questions."
 
-            After receiving researcher input:
+            After receiving researcher input or APPROVE:
             "Based on our research team's analysis:
 
             [Service/Topic 1]:
-            - Question 1
-            - Question 2
+            1. Question 1
+            2. Question 2
 
             [Service/Topic 2]:
-            - Question 3
-            - Question 4"
+            3. Question 3
+            4. Question 4"
 
             Reply with TERMINATE when:
             - User provides answers to questions
@@ -85,6 +91,7 @@ def create_agents():
             - Never suggest solutions
             - Only use questions from researchers
             - Focus on gathering context
+            - Preserve approved questions exactly as reviewed
             """,
         llm_config={"config_list": OPENAI_CONFIG},
     )
@@ -99,7 +106,9 @@ def create_agents():
             1. Analyze user's requirements and context
             2. Route to relevant specialists for solutions
             3. Consolidate specialists' solutions
-            4. Present organized solutions to user
+            4. Validate solutions with human expert before presenting to user
+            5. Rework solutions if human expert requests it (repeat the process)
+            6. Present organized solutions to user if approved by human expert
 
             WORKFLOW:
             1. For user's input:
@@ -119,13 +128,17 @@ def create_agents():
                - Preserve implementation details
                - DO NOT create new solutions
                - DO NOT modify specialist solutions
+               
+            4. When handling Human Expert responses:
+               - For APPROVE: Present the exact approved solutions to the user
+               - For REWORK: Route back to specialists with feedback
 
             RESPONSE FORMAT:
             For technical solutions:
             "Routing to specialist team for [solution type].
             Will return with proposed solutions."
 
-            After receiving specialist input:
+            After receiving specialist input or APPROVE from Human Expert:
             "Based on our specialist team's analysis:
 
             [Solution Approach 1]:
@@ -145,16 +158,30 @@ def create_agents():
             - Never create solutions yourself
             - Only use solutions from specialists
             - Focus on solution coordination
+            - Preserve approved solutions exactly as reviewed
             """,
         llm_config={"config_list": OPENAI_CONFIG},
     )
 
     # Create the human expert
     human_expert = autogen.UserProxyAgent(
-        name="AWS_Architect",
+        name=HUMAN_EXPERT_NAME,
         human_input_mode="ALWAYS",
         code_execution_config=False,
-        description="This agent can approve or refine clarifying questions and validate the proposed solutions returned by the specialists.",
+        description="Expert who can APPROVE or request REWORK with feedback for clarifying questions and proposed solutions.",
+        system_message="""
+            You are an AWS Expert who reviews:
+            1. Clarifying questions before they are sent to users
+            2. Final solutions before they are presented
+            
+            For each review, you can:
+            - Reply "APPROVE" to accept
+            - Reply "REWORK: [your feedback]" to request changes
+            
+            Focus on technical accuracy and completeness.
+            
+            Reply with TERMINATE when APPROVED (questions or solutions)
+        """,
     )
 
     # Create researchers
@@ -185,11 +212,11 @@ def main():
     
     # Create group chat with researchers
     researcher_group = autogen.GroupChat(
-        agents=researchers,
+        agents=researchers + [human_expert],
         messages=[],
         speaker_selection_method="auto",
         select_speaker_auto_verbose=True,
-        allow_repeat_speaker=False,
+        allow_repeat_speaker=True,
         max_round=10,
     )
     researchers_manager = autogen.GroupChatManager(
@@ -199,11 +226,11 @@ def main():
     
     # Create group chat with specialists
     specialist_group = autogen.GroupChat(
-        agents=specialists + [solution_coordinator],
+        agents=specialists + [human_expert],
         messages=[],
         speaker_selection_method="auto",
         select_speaker_auto_verbose=True,
-        allow_repeat_speaker=False,
+        allow_repeat_speaker=True,
         max_round=10,
     )
     specialists_manager = autogen.GroupChatManager(
@@ -302,6 +329,8 @@ def main():
                     - Remove questions about info already provided
                     - Group similar questions together
                     - Keep questions focused and non-redundant
+                    - This exact output will be shown to the user after approval
+                    - Maintain question numbering and formatting for final display
                 """
             },
         },
