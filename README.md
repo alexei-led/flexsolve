@@ -23,7 +23,31 @@ aws_support_system/
 │   ├── ec2_specialist.py
 │   ├── vpc_specialist.py
 │   ├── iam_specialist.py
-│   └── cloudwatch_specialist.py
+│   ├── cloudwatch_specialist.py
+│   ├── lambda_specialist.py
+│   ├── ecs_specialist.py
+│   ├── s3_specialist.py
+│   ├── sns_specialist.py
+│   ├── sqs_specialist.py
+│   ├── rds_specialist.py
+│   ├── elasticache_specialist.py
+│   └── aurora_specialist.py
+├── researchers/
+│   ├── __init__.py
+│   ├── base_researcher.py
+│   ├── eks_researcher.py
+│   ├── ec2_researcher.py
+│   ├── vpc_researcher.py
+│   ├── iam_researcher.py
+│   ├── cloudwatch_researcher.py
+│   ├── lambda_researcher.py
+│   ├── ecs_researcher.py
+│   ├── s3_researcher.py
+│   ├── sns_researcher.py
+│   ├── sqs_researcher.py
+│   ├── rds_researcher.py
+│   ├── elasticache_researcher.py
+│   └── aurora_researcher.py
 ├── utils/
 │   └── input_handler.py
 ├── config.py

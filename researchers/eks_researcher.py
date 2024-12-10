@@ -13,7 +13,18 @@ class EKSResearcher(BaseResearcher):
             "EKS networking",
             "EKS security"
         ]
+        example_questions = """
+        Example technical questions to consider:
+        1. What Kubernetes version do you require?
+        2. Do you need managed node groups or self-managed nodes?
+        3. What are your pod networking requirements?
+        4. Do you need cluster autoscaling?
+        5. What container runtime do you prefer?
+        6. Do you require specific add-ons or operators?
+        7. What are your pod security policy requirements?
+        8. Do you need private cluster endpoints?
+        """
         self.system_message = self.base_system_message.format(
             service_area="Amazon EKS",
             expertise="\n- ".join(self.expertise)
-        ) 
+        ) + example_questions 

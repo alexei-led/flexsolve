@@ -10,6 +10,14 @@ from specialists import (
     EC2Specialist,
     VPCSpecialist,
     IAMSpecialist,
+    LambdaSpecialist,
+    ECSSpecialist,
+    S3Specialist,
+    SNSSpecialist,
+    SQSSpecialist,
+    RDSSpecialist,
+    ElastiCacheSpecialist,
+    AuroraSpecialist
 )
 
 from researchers import (
@@ -18,6 +26,14 @@ from researchers import (
     IAMResearcher,
     EKSResearcher,
     VPCResearcher,
+    LambdaResearcher,
+    ECSResearcher,
+    S3Researcher,
+    SNSResearcher,
+    SQSResearcher,
+    RDSResearcher,
+    ElastiCacheResearcher,
+    AuroraResearcher
 )
 
 
@@ -191,6 +207,14 @@ def create_agents():
         EC2Researcher(OPENAI_CONFIG).create_agent(),
         EKSResearcher(OPENAI_CONFIG).create_agent(),
         VPCResearcher(OPENAI_CONFIG).create_agent(),
+        LambdaResearcher(OPENAI_CONFIG).create_agent(),
+        ECSResearcher(OPENAI_CONFIG).create_agent(),
+        S3Researcher(OPENAI_CONFIG).create_agent(),
+        SNSResearcher(OPENAI_CONFIG).create_agent(),
+        SQSResearcher(OPENAI_CONFIG).create_agent(),
+        RDSResearcher(OPENAI_CONFIG).create_agent(),
+        ElastiCacheResearcher(OPENAI_CONFIG).create_agent(),
+        AuroraResearcher(OPENAI_CONFIG).create_agent(),
     ]
 
     # Create specialists
@@ -200,6 +224,14 @@ def create_agents():
         EC2Specialist(OPENAI_CONFIG).create_agent(),
         EKSSpecialist(OPENAI_CONFIG).create_agent(),
         VPCSpecialist(OPENAI_CONFIG).create_agent(),
+        LambdaSpecialist(OPENAI_CONFIG).create_agent(),
+        ECSSpecialist(OPENAI_CONFIG).create_agent(),
+        S3Specialist(OPENAI_CONFIG).create_agent(),
+        SNSSpecialist(OPENAI_CONFIG).create_agent(),
+        SQSSpecialist(OPENAI_CONFIG).create_agent(),
+        RDSSpecialist(OPENAI_CONFIG).create_agent(),
+        ElastiCacheSpecialist(OPENAI_CONFIG).create_agent(),
+        AuroraSpecialist(OPENAI_CONFIG).create_agent(),
     ]
 
     return user_proxy, research_coordinator, solution_coordinator, specialists, researchers, human_expert

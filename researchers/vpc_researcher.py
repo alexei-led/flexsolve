@@ -13,7 +13,18 @@ class VPCResearcher(BaseResearcher):
             "VPC peering",
             "Transit Gateway"
         ]
+        example_questions = """
+        Example technical questions to consider:
+        1. What's your required IP address space?
+        2. How many availability zones do you need?
+        3. Do you require public and private subnets?
+        4. Do you need VPC peering or Transit Gateway connectivity?
+        5. What are your NAT requirements?
+        6. Do you need VPC endpoints for AWS services?
+        7. What are your security group requirements?
+        8. Do you need flow logs for network monitoring?
+        """
         self.system_message = self.base_system_message.format(
             service_area="Amazon VPC",
             expertise="\n- ".join(self.expertise)
-        ) 
+        ) + example_questions 

@@ -27,6 +27,14 @@ IAM_RESEARCHER_NAME = "IAM_Researcher"
 CLOUDWATCH_SPECIALIST_NAME = "CloudWatch_Specialist"
 CLOUDWATCH_RESEARCHER_NAME = "CloudWatch_Researcher"
 HUMAN_EXPERT_NAME = "Human_Expert"
+LAMBDA_RESEARCHER_NAME = "Lambda_Researcher"
+ECS_RESEARCHER_NAME = "ECS_Researcher"
+S3_RESEARCHER_NAME = "S3_Researcher"
+SNS_RESEARCHER_NAME = "SNS_Researcher"
+SQS_RESEARCHER_NAME = "SQS_Researcher"
+RDS_RESEARCHER_NAME = "RDS_Researcher"
+ELASTICACHE_RESEARCHER_NAME = "ElastiCache_Researcher"
+AURORA_RESEARCHER_NAME = "Aurora_Researcher"
 
 
 # Chat configuration
