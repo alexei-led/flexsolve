@@ -62,9 +62,12 @@ def create_agents():
 
             WORKFLOW:
             1. For user's input:
-               - Identify mentioned AWS services
-               - Note potential related services
-               - Spot missing technical context
+               - If input matches pattern "1. [answer] 2. [answer]..." -> Reply "TERMINATE"
+           - If input contains phrases like "proceed", "continue with solution" -> Reply "TERMINATE"
+           - Otherwise continue normal workflow:
+             * Identify mentioned AWS services
+             * Note potential related services
+             * Spot missing technical context
 
             2. When engaging researchers:
                - Include ALL potentially relevant researchers
@@ -95,10 +98,10 @@ def create_agents():
             4. Question 4"
 
             Reply with TERMINATE when:
-            - User provides answers to questions
-            - Interaction is non-technical
-            - No further context is needed
-            - Human Expert has approved the questions with "APPROVE"
+            - User provides numbered answers to clarifying questions (e.g., "1. Yes 2. No")
+        - User explicitly requests to proceed with solution
+        - Follow-up interaction is non-technical
+        - No further context is needed for working on the solution
 
             IMPORTANT:
             - Never suggest solutions
@@ -156,22 +159,21 @@ def create_agents():
     human_expert = autogen.UserProxyAgent(
         name=HUMAN_EXPERT_NAME,
         human_input_mode="ALWAYS",
+        default_auto_reply="APPROVE",
         code_execution_config=False,
-        description="Expert who can APPROVE or request REWORK with feedback for clarifying questions and proposed solutions.",
+        description="Human Expert can APPROVE or request REWORK with feedback for clarifying questions and proposed solutions.",
         system_message="""
-            You are an AWS Expert who reviews:
-            1. Clarifying questions before they are sent to users
-            2. Final solutions before they are presented
+            You are an AWS Human Expert who reviews:
+            1. Clarifying questions before they are sent to user
+            2. Final solutions before they are presented to user
             
             For each review, you can:
             - Reply "APPROVE" to accept
             - Reply "REWORK: [your feedback]" to request changes
             
             Focus on technical accuracy and completeness.
-            
-            Reply with TERMINATE when APPROVED (questions or solutions)
         """,
-        is_termination_msg=lambda x: x.get("content", "").find("APPROVE") >= 0,
+        is_termination_msg=lambda msg: "APPROVE" in msg["content"].upper(),
     )
 
     # Create researchers
@@ -227,6 +229,7 @@ def main():
     )
     researchers_manager = autogen.GroupChatManager(
         groupchat=researcher_group,
+        human_input_mode="TERMINATE",
         llm_config={"config_list": OPENAI_CONFIG},
     )
     
@@ -241,6 +244,7 @@ def main():
     )
     specialists_manager = autogen.GroupChatManager(
         groupchat=specialist_group,
+        human_input_mode="TERMINATE",
         llm_config={"config_list": OPENAI_CONFIG},
     )
 
@@ -248,6 +252,7 @@ def main():
     surveyer = autogen.AssistantAgent(
         name="surveyer",
         llm_config={"config_list": OPENAI_CONFIG},
+        human_input_mode="NEVER",
         system_message="""
             You are a surveyer.
             Your ask a single question.
@@ -264,8 +269,24 @@ def main():
             name="question_classifier",
             llm_config={"config_list": OPENAI_CONFIG},
             system_message="""
-                You are a classifier. Determine if the following question is technical in nature.
-                Reply with "YES" if it is technical, otherwise reply with "NO".
+                You are a classifier. Determine if the input is a technical question or problem that needs AWS expertise.
+                
+                Reply "YES" if:
+                - Message asks about AWS technical issues/problems
+                - Message requests technical guidance or troubleshooting
+                - Message describes technical errors or system behavior
+                
+                Reply "NO" if:
+                - Message is casual chat/greetings ("hi", "hello", etc)
+                - Message is a numbered list of answers to previous questions
+                - Message contains only status updates or confirmations
+                - Message is non-technical feedback or comments
+                
+                Examples:
+                "Hi there" -> "NO"
+                "1. Yes 2. Production 3. Last week" -> "NO" 
+                "How do I configure VPC peering?" -> "YES"
+                "My Lambda function is timing out" -> "YES"
             """,
         )
         response = research_coordinator.initiate_chat(
@@ -312,31 +333,16 @@ def main():
             "summary_method": "reflection_with_llm",
             "summary_args": { 
                 "summary_prompt": """
-                    Analyze all researcher responses and:
-                    1. Identify missing technical details
-                    2. Group questions by AWS service
-                    3. Remove duplicates while preserving context
-                    4. Do not invent new questions, use the questions provided by the researchers only!
-                    5. Number the questions sequentially
+                    Analyze all researcher responses and provide raw grouped questions:
+                    1. Remove duplicate questions
+                    2. Remove questions about already provided information
+                    3. Group by AWS service/topic
+                    4. Use only questions from researchers
+                    5. Do not create new questions
+                    6. Number all questions sequentially across all groups
                     
-                    Format: 
-                    [Service/Topic 1]:
-                    1. Question 1 
-                    2. Question 2
-                    ...
-
-                    [Service/Topic 2]:
-                    3. Question 3
-                    4. Question 4
-                    ...
-
-                    IMPORTANT:
-                    - Only use questions from researchers
-                    - Remove questions about info already provided
-                    - Group similar questions together
-                    - Keep questions focused and non-redundant
-                    - This exact output will be shown to the user after approval
-                    - Maintain question numbering and formatting for final display
+                    Output raw questions and groupings only, no formatting needed.
+                    The Research Coordinator will handle the final formatting.
                 """
             },
         },
@@ -354,42 +360,15 @@ def main():
             "summary_method": "reflection_with_llm",
             "summary_args": { 
                 "summary_prompt": """
-                    Present the specialists' solutions exactly as provided, with NO modifications:
-
-                    1. DO NOT rewrite or reformat solutions
-                    2. DO NOT modify any technical details or examples
-                    3. DO NOT summarize or shorten solutions
-                    
-                    ALLOWED MODIFICATIONS:
+                    Aggregate specialists' solutions with these rules:
                     1. REMOVE duplicate solutions
-                    2. REMOVE solutions that are not relevant to the user's problem
-                    3. For conflicting solutions, keep the one that is most relevant (by most relevant expert) to the user's problem and REMOVE the others
-
-                    For each specialist that provided a solution:
-                    1. Include their complete solution with all:
-                       - Code examples
-                       - Implementation steps
-                       - Commands
-                       - YAML files
-                       - Technical details
-                       - Considerations
-                    2. Maintain their original formatting and structure
-                    3. Keep all explanations and comments
-
-                    Format:
-                    [Specialist Name]'s Solution:
-                    [Present their complete solution exactly as provided]
-
-                    [Next Specialist Name]'s Solution:
-                    [Present their complete solution exactly as provided]
-
-                    IMPORTANT:
-                    - This is a direct presentation task, not a summarization
-                    - Keep all technical details intact
-                    - Preserve code blocks and examples exactly as given
-                    - Maintain original formatting and structure
-                    - Do not add any additional commentary or organization
-                    """
+                    2. REMOVE solutions not relevant to the user's problem
+                    3. For conflicting solutions, keep the most relevant specialist's solution
+                    4. Preserve all technical content exactly as provided
+                    
+                    Output raw solutions only, no additional formatting needed.
+                    The Solution Coordinator will handle the final presentation.
+                """
             },
         },
     ]

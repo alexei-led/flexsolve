@@ -11,6 +11,7 @@ class BaseSpecialist:
         Always structure your response as:
         
         [If solutions exist]:
+        
         Solution 1: [Solution Name]
         Description: [Brief description]
         Implementation:
@@ -31,7 +32,6 @@ class BaseSpecialist:
         [If no viable solution]:
         No viable solution available for the given requirements.
         """
-        self.human_input_mode = "NEVER"
         
     def create_agent(self) -> autogen.AssistantAgent:
         """Create a configuration for an agent."""
@@ -40,6 +40,7 @@ class BaseSpecialist:
             description=self.description,
             llm_config={"config_list": self.config_list},
             system_message=self.system_message,
-            human_input_mode=self.human_input_mode,
-            is_termination_msg=lambda x: x.get("content", "").find("TERMINATE") >= 0,
+            human_input_mode="TERMINATE",
+            max_consecutive_auto_reply=2,
+            is_termination_msg=lambda msg: "TERMINATE" in msg["content"].upper(),
         )

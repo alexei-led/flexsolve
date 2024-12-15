@@ -4,7 +4,6 @@ import autogen
 class BaseResearcher:
     def __init__(self, openai_config):
         self.openai_config = openai_config
-        self.human_input_mode = "NEVER"
         self.base_system_message = """
         You are a specialized AWS researcher for {service_area}.
         You have deep expertise in: {expertise}
@@ -45,6 +44,7 @@ class BaseResearcher:
             llm_config={"config_list": self.openai_config},
             description=self.description,
             system_message=self.system_message,
-            human_input_mode=self.human_input_mode,
-            is_termination_msg=lambda x: x.get("content", "").find("TERMINATE") >= 0,
+            human_input_mode="TERMINATE",
+            max_consecutive_auto_reply=2,
+            is_termination_msg=lambda msg: "TERMINATE" in msg["content"].upper(),
         ) 
